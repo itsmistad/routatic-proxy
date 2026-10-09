@@ -72,6 +72,15 @@ type ResponsesContent struct {
 type ResponsesUsage struct {
 	InputTokens  int `json:"input_tokens"`
 	OutputTokens int `json:"output_tokens"`
+
+	/*
+	 * InputTokensDetails carries the cached share of InputTokens. The
+	 * Responses API counts cached tokens inside input_tokens, so callers
+	 * must subtract them to get Anthropic-style regular input.
+	 */
+	InputTokensDetails struct {
+		CachedTokens int `json:"cached_tokens"`
+	} `json:"input_tokens_details"`
 }
 
 // ResponsesChunk represents a streaming chunk from the Responses API.

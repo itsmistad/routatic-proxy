@@ -726,8 +726,8 @@ func usageInfoToAnthropic(usage *types.UsageInfo) *types.Usage {
 }
 
 // responsesUsageToAnthropic maps Responses terminal usage to the Anthropic
-// terminal message_delta usage. Responses usage has no cache split, so the
-// fields map 1:1. A missing terminal event keeps the old zero behavior.
+// terminal message_delta usage. A missing terminal event keeps the old zero
+// behavior.
 func responsesUsageToAnthropic(usage *types.ResponsesUsage) *types.Usage {
 	if usage == nil {
 		return &types.Usage{
@@ -735,9 +735,20 @@ func responsesUsageToAnthropic(usage *types.ResponsesUsage) *types.Usage {
 			OutputTokens: 0,
 		}
 	}
+	return responsesUsageSplit(*usage)
+}
+
+/*
+ * responsesUsageSplit converts Responses usage to Anthropic usage. The
+ * Responses API includes cached tokens in input_tokens, so subtract them and
+ * report them as cache reads. The API has no cache-write counter.
+ */
+func responsesUsageSplit(u types.ResponsesUsage) *types.Usage {
+	cached := u.InputTokensDetails.CachedTokens
 	return &types.Usage{
-		InputTokens:  usage.InputTokens,
-		OutputTokens: usage.OutputTokens,
+		InputTokens:          nonNegative(u.InputTokens - cached),
+		OutputTokens:         u.OutputTokens,
+		CacheReadInputTokens: cached,
 	}
 }
 
