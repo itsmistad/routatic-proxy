@@ -1955,11 +1955,12 @@ func TestProxyResponsesStream_TerminalUsageMissing(t *testing.T) {
 }
 
 /*
- * TestProxyResponsesStream_CachedTokens verifies that cached tokens leave
- * input_tokens and become cache_read_input_tokens in the terminal
- * message_delta.
+ * TestProxyResponsesStream_CachedTokensAndStartUsage verifies that cached
+ * tokens leave input_tokens and become cache_read_input_tokens in the terminal
+ * message_delta, and that message_start carries the usage attached to the
+ * context.
  */
-func TestProxyResponsesStream_CachedTokens(t *testing.T) {
+func TestProxyResponsesStream_CachedTokensAndStartUsage(t *testing.T) {
 	handler := NewStreamHandler()
 	w := newMockResponseWriter()
 	body := sseLines(
@@ -1967,7 +1968,8 @@ func TestProxyResponsesStream_CachedTokens(t *testing.T) {
 		`{"type":"response.completed","usage":{"input_tokens":1000,"output_tokens":25,"input_tokens_details":{"cached_tokens":900}}}`,
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	carried := types.Usage{InputTokens: 40, OutputTokens: 20, CacheReadInputTokens: 950}
+	ctx, cancel := context.WithCancel(WithStartUsage(context.Background(), carried))
 	defer cancel()
 
 	if err := handler.ProxyResponsesStream(w, body, "gpt-6.1-sol", ctx, 0, cancel); err != nil {
@@ -1975,6 +1977,9 @@ func TestProxyResponsesStream_CachedTokens(t *testing.T) {
 	}
 
 	events := parseSSEEvents(t, w.buf.String())
+	if got := events[0].Message.Usage; got != carried {
+		t.Errorf("message_start usage = %+v, want %+v", got, carried)
+	}
 	last := events[len(events)-2]
 	if last.Type != "message_delta" || last.Usage == nil {
 		t.Fatalf("event = %+v, want message_delta with usage", last)

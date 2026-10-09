@@ -41,6 +41,7 @@ type MessagesHandler struct {
 	requestTransformer  *transformer.RequestTransformer
 	responseTransformer *transformer.ResponseTransformer
 	streamHandler       *transformer.StreamHandler
+	usageCarry          *usageCarry
 	tokenCounter        *token.Counter
 	logger              *slog.Logger
 	rateLimiter         *middleware.RateLimiter
@@ -365,6 +366,7 @@ func NewMessagesHandler(
 		requestTransformer:  transformer.NewRequestTransformer(),
 		responseTransformer: transformer.NewResponseTransformer(),
 		streamHandler:       transformer.NewStreamHandler(),
+		usageCarry:          newUsageCarry(),
 		tokenCounter:        tokenCounter,
 		logger:              slog.Default(),
 		rateLimiter:         middleware.NewRateLimiter(100, time.Minute),
@@ -696,7 +698,8 @@ func (h *MessagesHandler) handleStreaming(
 	requestID string,
 	requestStarts ...time.Time,
 ) {
-	clientCtx := r.Context()
+	carryKey := conversationKey(anthropicReq)
+	clientCtx := transformer.WithStartUsage(r.Context(), h.usageCarry.get(carryKey))
 	requestStart := time.Now()
 	if len(requestStarts) > 0 {
 		requestStart = requestStarts[0]
@@ -752,6 +755,12 @@ func (h *MessagesHandler) handleStreaming(
 			if firstContentAt := rw.firstContentTime(); !firstContentAt.IsZero() {
 				h.metrics.RecordTTFT(firstContentAt.Sub(requestStart))
 			}
+			h.usageCarry.put(carryKey, types.Usage{
+				InputTokens:              rw.usage.inputTokens,
+				OutputTokens:             rw.usage.outputTokens,
+				CacheReadInputTokens:     rw.usage.cacheReadInputTokens,
+				CacheCreationInputTokens: rw.usage.cacheCreationInputTokens,
+			})
 			h.logger.Info("streaming completed",
 				"model", model.ModelID,
 				"latency", latency,

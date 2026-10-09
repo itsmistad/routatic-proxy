@@ -226,6 +226,7 @@ func (h *StreamHandler) ProxyStream(
 			Role:    "assistant",
 			Content: []types.ContentBlock{},
 			Model:   originalModel,
+			Usage:   startUsage(clientCtx),
 		},
 	}
 	if err := writeSSEEvent(w, msgStart); err != nil {
@@ -833,6 +834,7 @@ func (h *StreamHandler) ProxyResponsesStream(
 			Role:    "assistant",
 			Content: []types.ContentBlock{},
 			Model:   originalModel,
+			Usage:   startUsage(clientCtx),
 		},
 	}
 	if err := writeSSEEvent(w, msgStart); err != nil {
@@ -1168,6 +1170,7 @@ func (h *StreamHandler) ProxyGeminiStream(
 			Role:    "assistant",
 			Content: []types.ContentBlock{},
 			Model:   originalModel,
+			Usage:   startUsage(clientCtx),
 		},
 	}
 	if err := writeSSEEvent(w, msgStart); err != nil {
