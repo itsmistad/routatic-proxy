@@ -233,10 +233,7 @@ func (t *ResponseTransformer) TransformResponsesResponse(
 		Content:    contentBlocks,
 		Model:      originalModel,
 		StopReason: stopReason,
-		Usage: types.Usage{
-			InputTokens:  responsesResp.Usage.InputTokens,
-			OutputTokens: responsesResp.Usage.OutputTokens,
-		},
+		Usage:      *responsesUsageSplit(responsesResp.Usage),
 	}
 
 	return anthropicResp, nil

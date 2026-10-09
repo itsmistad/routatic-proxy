@@ -278,8 +278,9 @@ func ResponsesToNormalized(responsesResp *types.ResponsesResponse, modelID strin
 	}
 
 	nr.Usage = core.NormalizedUsage{
-		InputTokens:  responsesResp.Usage.InputTokens,
-		OutputTokens: responsesResp.Usage.OutputTokens,
+		InputTokens:     nonNegative(responsesResp.Usage.InputTokens - responsesResp.Usage.InputTokensDetails.CachedTokens),
+		OutputTokens:    responsesResp.Usage.OutputTokens,
+		CacheReadTokens: responsesResp.Usage.InputTokensDetails.CachedTokens,
 	}
 
 	return nr

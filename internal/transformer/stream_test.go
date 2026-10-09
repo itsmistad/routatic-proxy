@@ -1953,3 +1953,34 @@ func TestProxyResponsesStream_TerminalUsageMissing(t *testing.T) {
 		t.Errorf("event[4].Usage = %+v, want 0/0", delta.Usage)
 	}
 }
+
+/*
+ * TestProxyResponsesStream_CachedTokens verifies that cached tokens leave
+ * input_tokens and become cache_read_input_tokens in the terminal
+ * message_delta.
+ */
+func TestProxyResponsesStream_CachedTokens(t *testing.T) {
+	handler := NewStreamHandler()
+	w := newMockResponseWriter()
+	body := sseLines(
+		`{"type":"response.output_text.delta","delta":"hi"}`,
+		`{"type":"response.completed","usage":{"input_tokens":1000,"output_tokens":25,"input_tokens_details":{"cached_tokens":900}}}`,
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if err := handler.ProxyResponsesStream(w, body, "gpt-6.1-sol", ctx, 0, cancel); err != nil {
+		t.Fatalf("ProxyResponsesStream error: %v", err)
+	}
+
+	events := parseSSEEvents(t, w.buf.String())
+	last := events[len(events)-2]
+	if last.Type != "message_delta" || last.Usage == nil {
+		t.Fatalf("event = %+v, want message_delta with usage", last)
+	}
+	want := types.Usage{InputTokens: 100, OutputTokens: 25, CacheReadInputTokens: 900}
+	if *last.Usage != want {
+		t.Errorf("message_delta usage = %+v, want %+v", *last.Usage, want)
+	}
+}
